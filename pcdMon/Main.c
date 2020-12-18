@@ -9,13 +9,14 @@
 
 SDL_Renderer* renderer = NULL;
 SDL_Window* window = NULL;
-int* blits = NULL;
 int running = FALSE;
 int lastFrameTime = 0;
 int windowWidth = 1000;
 int windowHeight = 1000;
 float blitScaleFactor = 1.0f;
-float blit = 0;
+double blit = 0;
+double maxBlit = 0;
+long* blits = NULL;
 
 HQUERY hQuery = NULL;
 HCOUNTER hCounter = NULL;
@@ -48,14 +49,14 @@ int initPerfCounter(char* counterPath) {
 }
 
 
-LONG pollPerfCounter(void) {
+void pollPerfCounter(void) {
 	PDH_STATUS pdhStatus;
 
 	// Poll for the query data
 	pdhStatus = PdhCollectQueryData(hQuery);
 	if (pdhStatus != ERROR_SUCCESS) {
 		fwprintf(stderr, L"PdhCollectQueryData failed: 0x%x\n", pdhStatus);
-		return -9999;
+		return;
 	}
 
 	// counter is in bytes/sec, so poll on a 1 second interval:
@@ -65,7 +66,7 @@ LONG pollPerfCounter(void) {
 	pdhStatus = PdhCollectQueryData(hQuery);
 	if (pdhStatus != ERROR_SUCCESS) {
 		fwprintf(stderr, L"PdhCollectQueryData failed: 0x%x\n", pdhStatus);
-		return -9999;
+		return;
 	}
 
 	// For time-based rate counters, it makes sense to get the formatted 
@@ -79,15 +80,13 @@ LONG pollPerfCounter(void) {
 	);
 	if (pdhStatus != ERROR_SUCCESS) {
 		fwprintf(stderr, L"PdhGetFormattedCounterValue failed: 0x%x\n", pdhStatus);
-		return -9999;
+		return;
 	}
-
-	return pValue.longValue;
 }
 
 
 void poll(void) {
-	while (running) { LONG counterData = pollPerfCounter(); }
+	while (running) { pollPerfCounter(); }
 }
 
 
@@ -113,11 +112,17 @@ int createPollThread(void) {
 }
 
 
-void shiftBlitBuffer(int inData) {
-	for (short i = 0; i < windowWidth-1; i++) {
+void shiftBlitBuffer(long inData) {
+	for (int i = 0; i < windowWidth-1; i++) {
 		blits[i] = blits[i + 1];
 	}
 	blits[windowWidth - 1] = inData;
+}
+
+
+long scaleBetween(long num, long minScale, long maxScale, long min, long max) {
+	if (!num || !max) return 0;
+	return (maxScale - minScale) * (num - min) / (max - min) + minScale;
 }
 
 
@@ -159,7 +164,7 @@ int initWindow(void) {
 int setup(void) {
 	if (!createPollThread()) return FALSE;
 
-	(int*)blits = (int*)calloc(windowWidth, sizeof(int));
+	(long*)blits = (long*)calloc(windowWidth, sizeof(long));
 	if (blits == NULL) return FALSE;
 
 	return TRUE;
@@ -201,7 +206,7 @@ void processInput(void) {
 			SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 			if (blits != NULL) {
 				free(blits);
-				(int*)blits = (int*)calloc(windowWidth,sizeof(int));
+				(long*)blits = (long*)calloc(windowWidth,sizeof(long));
 			}
 			else {
 				fwprintf(stderr, L"malloc returned nullptr\n");
@@ -227,7 +232,7 @@ void update(void) {
 	// Ticks from last frame converted to seconds:
 	// Objects should update as a function of pixels per second,
 	// rather than a function of pixels per frame. 
-	float deltaTime = (SDL_GetTicks() - lastFrameTime) / 1000.0f;
+	double deltaTime = (SDL_GetTicks() - lastFrameTime) / 1000.0f;
 	lastFrameTime = SDL_GetTicks(); // Ticks since SDL_Init()
 
 	///////////////////////////////////////////////////////////////
@@ -251,8 +256,8 @@ void update(void) {
 		blitScaleFactor *= 1.25;
 	}
 
-	int currentCounterData = (int)(pValue.longValue);
-	float difference;
+	long currentCounterData = pValue.longValue;
+	double difference;
 
 	if (blit > currentCounterData) {
 		difference = blit - currentCounterData;
@@ -264,6 +269,12 @@ void update(void) {
 		blit += difference * 5 * deltaTime;
 		shiftBlitBuffer(blit);
 	}
+	
+	long max = 0;
+	for (int i = 0; i < windowWidth; i++) {
+		if (blits[i] > max) max = blits[i];
+	}
+	maxBlit = max;
 }
 
 
@@ -271,13 +282,14 @@ void draw(void) {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
-	for (int i = 1; i < windowWidth-1; i++) {
+	for (int i = 0; i < windowWidth-1; i++) {
 		//Shade in the bulk
-		SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
+		long shade = scaleBetween(blits[i], 0, 255, 0, maxBlit);
+		SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
 		SDL_RenderDrawLine(
 			renderer, 
 			i, 
-			windowHeight - (blits[i] *blitScaleFactor), 
+			windowHeight - (blits[i] * blitScaleFactor), 
 			i, 
 			windowHeight
 		);
