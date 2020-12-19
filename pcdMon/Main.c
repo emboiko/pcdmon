@@ -203,10 +203,28 @@ void processInput(void) {
 	
 	case SDL_WINDOWEVENT:
 		if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+			int lastWindowWidth = windowWidth;
 			SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 			if (blits != NULL) {
-				free(blits);
-				(long*)blits = (long*)calloc(windowWidth,sizeof(long));
+				long* blitsBuff;
+				(long*)blitsBuff = (long*)calloc(lastWindowWidth, sizeof(long));
+				if (blitsBuff != NULL) {
+					for (int i = 0; i < lastWindowWidth; i++) {
+						blitsBuff[i] = blits[i];
+					}
+
+					free(blits);
+					(long*)blits = (long*)calloc(windowWidth, sizeof(long));
+
+					if (blits != NULL) {
+						for (int i = 0; i < lastWindowWidth; i++) {
+							if (i >= windowWidth) break;
+							blits[i] = blitsBuff[i];
+						}
+
+						free(blitsBuff);
+					}
+				}
 			}
 			else {
 				fwprintf(stderr, L"malloc returned nullptr\n");
