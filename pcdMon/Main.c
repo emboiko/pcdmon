@@ -224,6 +224,7 @@ void processInput(void) {
 		}
 
 		if (event.key.keysym.sym == SDLK_UP) {
+			if (pollingInterval > 10000) break;
 			pollingInterval += 100;
 		}
 
@@ -391,7 +392,7 @@ int main(int argc, char** argv) {
 	}
 	if (argc > 2) {
 		pollingInterval = atoi(argv[2]);
-		if (!pollingInterval) {
+		if (!pollingInterval || pollingInterval > 10000) {
 			fwprintf(stderr, L"Bad polling interval\n");
 			fwprintf(stderr, L"Usage: pcdmon {Counter Path}  [Polling Interval]\n");
 			return ERROR_INVALID_COMMAND_LINE;

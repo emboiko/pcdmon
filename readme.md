@@ -3,14 +3,14 @@
 Render a visualization for an individual Windows performance counter.
 
 <div align="center">
-<img src="https://i.imgur.com/JhmFtLn.png">
+<img src="https://i.imgur.com/j36eTpa.png">
 </div>
 
 **Usage:**
 
-`pcdmon {Counter Path}`
+`pcdmon {Counter Path} [Polling Interval]`
 
-where `{Counter Path}` is a valid Windows [Counter Path](https://docs.microsoft.com/en-us/windows/win32/perfctrs/specifying-a-counter-path). 
+where `{Counter Path}` is a valid Windows [Counter Path](https://docs.microsoft.com/en-us/windows/win32/perfctrs/specifying-a-counter-path)
 
 A noteworthy shortcut to enumerate existing paths on a given machine is to simply use PowerShell:
 
@@ -22,7 +22,9 @@ Then supply pcdmon with a single argument containing the desired counter path, f
 
 `pcdmon "\network interface(intel[r] wi-fi 6 ax200 160mhz)\bytes received/sec"`
 
-Remember to wrap the argument in quotes if it contains spaces
+*Remember to wrap the argument in quotes if it contains spaces*
+
+The default polling interval is 1 second (1000ms), which is adjustable with the keybindings listed below. The minimum and maximum permitted polling intervals are 100ms and 10000ms respectively. Numerous performance counters are implemented as rate-counters which require more than a single sample to produce a meaningful result, so use caution when passing an interval argument. 
 
 
 ---
@@ -32,6 +34,20 @@ Remember to wrap the argument in quotes if it contains spaces
 `<F1>` - Enable window decorations
 
 `<F2>` - Disable window decorations
+
+`<Arrow Up>` - Increase polling interval by 100ms
+
+`<Arrow Down>` - Decrease polling interval by 100ms
+
+`<W>` - Shift projector position up
+
+`<A>` - Shift projector position left
+
+`<S>` - Shift projector position down
+
+`<D>` - Shift projector position right
+
+`<R>` - Reset projector position
 
 ---
 
@@ -49,6 +65,5 @@ Further reading:
 
 Todo:
 
-- Viewports
-- Render text (?)
-- Accept multiple counters
+- Win32's [DrawText()](https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-drawtext) (SDL viewport?)
+- Clicking in the chart should probably do something
