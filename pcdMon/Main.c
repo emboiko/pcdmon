@@ -13,11 +13,13 @@ int running = FALSE;
 int lastFrameTime = 0;
 int windowWidth = 1000;
 int windowHeight = 1000;
+int pollingInterval = 1000;
+float xProjectionOffset = 0.5;
+float yProjectionOffset = 0.75;
 float blitScaleFactor = 1.0f;
 double blit = 0;
 double maxBlit = 0;
 long* blits = NULL;
-
 HQUERY hQuery = NULL;
 HCOUNTER hCounter = NULL;
 PDH_FMT_COUNTERVALUE pValue;
@@ -59,8 +61,7 @@ void pollPerfCounter(void) {
 		return;
 	}
 
-	// counter is in bytes/sec, so poll on a 1 second interval:
-	Sleep(1000);
+	Sleep(pollingInterval);
 
 	// Poll again for the delta so we have something to calculate
 	pdhStatus = PdhCollectQueryData(hQuery);
@@ -157,6 +158,8 @@ int initWindow(void) {
 		return FALSE;
 	}
 
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
 	return TRUE;
 }
 
@@ -197,6 +200,36 @@ void processInput(void) {
 		
 		if (event.key.keysym.sym == SDLK_F2) {
 			SDL_SetWindowBordered(window, SDL_FALSE);
+		}
+
+		if (event.key.keysym.sym == SDLK_w) {
+			yProjectionOffset -= .025;
+		}
+
+		if (event.key.keysym.sym == SDLK_a) {
+			xProjectionOffset -= .025;
+		}
+
+		if (event.key.keysym.sym == SDLK_s) {
+			yProjectionOffset += .025;
+		}
+
+		if (event.key.keysym.sym == SDLK_d) {
+			xProjectionOffset += .025;
+		}
+
+		if (event.key.keysym.sym == SDLK_r) {
+			xProjectionOffset = 0.5;
+			yProjectionOffset = 0.75;
+		}
+
+		if (event.key.keysym.sym == SDLK_UP) {
+			pollingInterval += 100;
+		}
+
+		if (event.key.keysym.sym == SDLK_DOWN) { 
+			if (pollingInterval < 100) break;
+			pollingInterval -= 100;
 		}
 		
 		break;
@@ -300,15 +333,31 @@ void draw(void) {
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 
-	for (int i = 0; i < windowWidth-1; i++) {
-		//Shade in the bulk
-		long shade = scaleBetween(blits[i], 0, 255, 0, maxBlit);
+	long shade;
+
+	// Draw all shadows first so they're overlapped by the bulk shading
+	for (int i = 0; i < windowWidth - 1; i++) {
+		//Trace the shadow
+		shade = scaleBetween(blits[i], 25, 200, 0, maxBlit);
 		SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
 		SDL_RenderDrawLine(
-			renderer, 
-			i, 
-			windowHeight - (blits[i] * blitScaleFactor), 
-			i, 
+			renderer,
+			i,
+			windowHeight - (blits[i] * blitScaleFactor),
+			windowWidth * xProjectionOffset,
+			windowHeight * yProjectionOffset
+		);
+	}
+
+	for (int i = 0; i < windowWidth-1; i++) {
+		//Shade in the bulk
+		shade = scaleBetween(blits[i], 0, 200, 0, maxBlit);
+		SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
+		SDL_RenderDrawLine(
+			renderer,
+			i,
+			windowHeight - (blits[i] * blitScaleFactor),
+			i,
 			windowHeight
 		);
 
@@ -323,18 +372,30 @@ void draw(void) {
 		);
 	}
 
+
+
 	SDL_RenderPresent(renderer);
 }
 
 
 int main(int argc, char** argv) {
 	if (argc < 2) {
-		fwprintf(stderr, L"Usage: pcdmon {Counter Path}\n");
+		fwprintf(stderr, L"Missing argument\n");
+		fwprintf(stderr, L"Usage: pcdmon {Counter Path}  [Polling Interval]\n");
 		return ERROR_INVALID_COMMAND_LINE;
 	}
 	if (!initPerfCounter(argv[1])) {
-		fwprintf(stderr, L"Usage: pcdmon {Counter Path}\n");
+		fwprintf(stderr, L"Invalid counter path\n");
+		fwprintf(stderr, L"Usage: pcdmon {Counter Path}  [Polling Interval]\n");
 		return ERROR_INVALID_COMMAND_LINE;
+	}
+	if (argc > 2) {
+		pollingInterval = atoi(argv[2]);
+		if (!pollingInterval) {
+			fwprintf(stderr, L"Bad polling interval\n");
+			fwprintf(stderr, L"Usage: pcdmon {Counter Path}  [Polling Interval]\n");
+			return ERROR_INVALID_COMMAND_LINE;
+		}
 	}
 
 	running = initWindow();
