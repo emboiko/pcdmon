@@ -280,17 +280,17 @@ void processInput(void) {
 		}
 
 		if (event.key.keysym.sym == SDLK_UP) {
-			if (pollingInterval > 10000) break;
-			pollingInterval += 100;
+if (pollingInterval > 10000) break;
+pollingInterval += 100;
 		}
 
-		if (event.key.keysym.sym == SDLK_DOWN) { 
+		if (event.key.keysym.sym == SDLK_DOWN) {
 			if (pollingInterval < 100) break;
 			pollingInterval -= 100;
 		}
-		
+
 		break;
-	
+
 	case SDL_WINDOWEVENT:
 		if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
 			int lastWindowWidth = windowWidth;
@@ -345,25 +345,6 @@ void update(void) {
 
 	///////////////////////////////////////////////////////////////
 
-	for (int i = 0; i < windowWidth; i++) {
-		if ((blits[i] * blitScaleFactor) > windowHeight) {
-			blitScaleFactor *= 0.75;
-			break;
-		}
-	}
-
-	float blitThreshold = windowHeight * 0.9;
-	int blitThresholdMet = FALSE;
-	for (int i = 0; i < windowWidth; i++) {
-		if ((blits[i] * blitScaleFactor) > blitThreshold) {
-			blitThresholdMet = TRUE;
-			break;
-		}
-	}
-	if (!blitThresholdMet && blitScaleFactor <= 1) {
-		blitScaleFactor *= 1.25;
-	}
-
 	double difference;
 	if (blit > currentCounterData) {
 		difference = blit - currentCounterData;
@@ -375,12 +356,23 @@ void update(void) {
 		blit += difference * CHART_STEP * deltaTime;
 		shiftBlitBuffer(blit);
 	}
-	
-	long max = 0;
+
+	float blitThreshold = windowHeight * 0.9f;
 	for (int i = 0; i < windowWidth; i++) {
-		if (blits[i] > max) max = blits[i];
+		if ((blits[i] * blitScaleFactor) > windowHeight) {
+			blitScaleFactor *= 0.75f;
+		}
+		else if (
+			((blits[i] * blitScaleFactor) > blitThreshold)
+			&&
+			(blitScaleFactor <= 1)
+			) {
+			blitScaleFactor *= 1.25f;
+		}
+
+		if (blits[i] > maxBlit) maxBlit = blits[i];
 	}
-	maxBlit = max;
+
 }
 
 
