@@ -26,8 +26,23 @@ Then supply pcdmon with a single argument containing the desired counter path, f
 
 The default polling interval is 1 second (1000ms), which is adjustable with the keybindings listed below. The minimum and maximum permitted polling intervals are 100ms and 10000ms respectively. Numerous performance counters are implemented as rate-counters which require more than a single sample to produce a meaningful result, so use caution when passing an interval argument. 
 
+---
+
+**More path examples**
+
+Multiple instances of objects that share the same name string can be indexed with a pound sign
+
+`\Process(chrome)\IO Read Bytes/sec`
+
+`\Process(chrome#1)\IO Read Bytes/sec`
+
+`\Processor(_Total)\% Processor Time`
+
+`\System\File Write Operations/sec`
 
 ---
+
+**Key bindings**
 
 `<Escape>` - Quit
 
@@ -58,9 +73,3 @@ Further reading:
 [win32 API](https://docs.microsoft.com/en-us/windows/win32/)
 
 [libsdl](https://www.libsdl.org/)
-
----
-
-Todo:
-
-- Clicking in the chart should probably do something
