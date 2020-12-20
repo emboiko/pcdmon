@@ -55,8 +55,6 @@ Further reading:
 
 [performance counters](https://docs.microsoft.com/en-us/windows/win32/perfctrs/using-performance-counters)
 
-
-
 [win32 API](https://docs.microsoft.com/en-us/windows/win32/)
 
 [libsdl](https://www.libsdl.org/)
@@ -65,5 +63,4 @@ Further reading:
 
 Todo:
 
-- Win32's [DrawText()](https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-drawtext) (SDL viewport?)
 - Clicking in the chart should probably do something

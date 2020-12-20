@@ -6,6 +6,7 @@
 
 #define FPS 60
 #define TARGET_FRAMETIME (1000 / FPS)
+#define CHART_STEP 5
 
 SDL_Renderer* renderer = NULL;
 SDL_Window* window = NULL;
@@ -19,13 +20,26 @@ float yProjectionOffset = 0.75;
 float blitScaleFactor = 1.0f;
 double blit = 0;
 double maxBlit = 0;
+long currentCounterData = 0;
+long maxCounterData = 0;
 long* blits = NULL;
+char* counterPath = NULL;
+int terminalColumns = 0;
+int terminalRows = 0;
+HANDLE hStdOut = NULL;
 HQUERY hQuery = NULL;
 HCOUNTER hCounter = NULL;
 PDH_FMT_COUNTERVALUE pValue;
+COORD origin = {.X=0, .Y=0};
 
 
-int initPerfCounter(char* counterPath) {
+void hideCursor() {
+	CONSOLE_CURSOR_INFO info = {.dwSize=100, .bVisible=FALSE};
+	SetConsoleCursorInfo(hStdOut, &info);
+}
+
+
+int initPerfCounter(char* cPath) {
 	PDH_STATUS pdhStatus;
 
 	// Get a handle to a new query object
@@ -38,7 +52,7 @@ int initPerfCounter(char* counterPath) {
 	// Add the counter [path] to the query object
 	pdhStatus = PdhAddCounterA(
 		hQuery,
-		counterPath,
+		cPath,
 		0,
 		&hCounter
 	);
@@ -47,18 +61,19 @@ int initPerfCounter(char* counterPath) {
 		return FALSE;
 	}
 
+	counterPath = cPath;
 	return TRUE;
 }
 
 
-void pollPerfCounter(void) {
+long pollPerfCounter(void) {
 	PDH_STATUS pdhStatus;
 
 	// Poll for the query data
 	pdhStatus = PdhCollectQueryData(hQuery);
 	if (pdhStatus != ERROR_SUCCESS) {
 		fwprintf(stderr, L"PdhCollectQueryData failed: 0x%x\n", pdhStatus);
-		return;
+		return -9999;
 	}
 
 	Sleep(pollingInterval);
@@ -67,7 +82,7 @@ void pollPerfCounter(void) {
 	pdhStatus = PdhCollectQueryData(hQuery);
 	if (pdhStatus != ERROR_SUCCESS) {
 		fwprintf(stderr, L"PdhCollectQueryData failed: 0x%x\n", pdhStatus);
-		return;
+		return-9999;
 	}
 
 	// For time-based rate counters, it makes sense to get the formatted 
@@ -81,13 +96,32 @@ void pollPerfCounter(void) {
 	);
 	if (pdhStatus != ERROR_SUCCESS) {
 		fwprintf(stderr, L"PdhGetFormattedCounterValue failed: 0x%x\n", pdhStatus);
-		return;
+		return-9999;
 	}
+
+	return (long)pValue.longValue;
 }
 
 
 void poll(void) {
-	while (running) { pollPerfCounter(); }
+	while (running) { 
+		currentCounterData = pollPerfCounter(); 
+		if (currentCounterData > maxCounterData) maxCounterData = currentCounterData;
+		SetConsoleCursorPosition(hStdOut, origin);
+
+		printf("                _                   \n");
+		printf("               | |                  \n");
+		printf(" ____   ____ __| |____   ___  ____  \n");
+		printf("|  _ \\ / ___) _  |    \\ / _ \\|  _ \\ \n");
+		printf("| |_| ( (__( (_| | | | | |_| | | | |\n");
+		printf("|  __/ \\____)____|_|_|_|\\___/|_| |_|\n");
+		printf("|_|                                 \n\n");
+
+		printf("Counter:      %s           \n", counterPath);
+		printf("Interval:     %d ms        \n", pollingInterval);
+		printf("Peak:         %ld          \n", maxCounterData);
+		printf("Current:      %ld          \n", currentCounterData);
+	}
 }
 
 
@@ -169,6 +203,28 @@ int setup(void) {
 
 	(long*)blits = (long*)calloc(windowWidth, sizeof(long));
 	if (blits == NULL) return FALSE;
+
+	hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	DWORD prev_mode;
+	GetConsoleMode(hStdOut, &prev_mode);
+	SetConsoleMode(
+		hStdOut, 
+		ENABLE_EXTENDED_FLAGS | (prev_mode &= ~ENABLE_QUICK_EDIT_MODE)
+	);
+	hideCursor();
+
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(hStdOut, &csbi);
+	terminalColumns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+	terminalRows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+
+	SetConsoleCursorPosition(hStdOut, origin);
+	for (int i = 0; i < terminalRows; i++) {
+		for (int j = 0; j < terminalColumns; j++) {
+			printf(" ");
+		}
+		printf("\n");
+	}
 
 	return TRUE;
 }
@@ -308,17 +364,15 @@ void update(void) {
 		blitScaleFactor *= 1.25;
 	}
 
-	long currentCounterData = pValue.longValue;
 	double difference;
-
 	if (blit > currentCounterData) {
 		difference = blit - currentCounterData;
-		blit -= difference * 5 * deltaTime;
+		blit -= difference * CHART_STEP * deltaTime;
 		shiftBlitBuffer(blit);
 	}
 	else if (blit < currentCounterData) {
 		difference = currentCounterData - blit;
-		blit += difference * 5 * deltaTime;
+		blit += difference * CHART_STEP * deltaTime;
 		shiftBlitBuffer(blit);
 	}
 	
@@ -336,7 +390,7 @@ void draw(void) {
 
 	long shade;
 
-	// Draw all shadows first so they're overlapped by the bulk shading
+	 // Draw all shadows first so they're overlapped by the bulk shading
 	for (int i = 0; i < windowWidth - 1; i++) {
 		//Trace the shadow
 		shade = scaleBetween(blits[i], 25, 200, 0, maxBlit);
@@ -351,7 +405,7 @@ void draw(void) {
 	}
 
 	for (int i = 0; i < windowWidth-1; i++) {
-		//Shade in the bulk
+		// Shade in the bulk
 		shade = scaleBetween(blits[i], 0, 200, 0, maxBlit);
 		SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
 		SDL_RenderDrawLine(
@@ -362,7 +416,7 @@ void draw(void) {
 			windowHeight
 		);
 
-		//Trace the top
+		// Trace the top
 		SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 		SDL_RenderDrawLine(
 			renderer,
@@ -372,8 +426,6 @@ void draw(void) {
 			windowHeight - (blits[i + 1] * blitScaleFactor) - 1
 		);
 	}
-
-
 
 	SDL_RenderPresent(renderer);
 }
