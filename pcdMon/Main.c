@@ -32,6 +32,7 @@ HQUERY hQuery = NULL;
 HCOUNTER hCounter = NULL;
 PDH_FMT_COUNTERVALUE pValue;
 COORD origin = {.X=0, .Y=0};
+CONSOLE_SCREEN_BUFFER_INFO csbi;
 
 
 void hideCursor() {
@@ -108,20 +109,42 @@ void poll(void) {
 	while (running) { 
 		currentCounterData = pollPerfCounter(); 
 		if (currentCounterData > maxCounterData) maxCounterData = currentCounterData;
+		
+		SetConsoleCursorPosition(hStdOut, origin);
+		GetConsoleScreenBufferInfo(hStdOut, &csbi);
+		int currentTerminalRows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+		int currentTerminalColumns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+		if (
+			(currentTerminalColumns != terminalColumns) || 
+			(currentTerminalRows != terminalRows)
+			) {
+
+			for (int i = 0; i < currentTerminalRows; i++) {
+				for (int j = 0; j < currentTerminalColumns; j++) {
+					printf(" ");
+				}
+				printf("\n");
+			}
+		}
+		terminalColumns = currentTerminalColumns;
+		terminalRows = currentTerminalRows;
 		SetConsoleCursorPosition(hStdOut, origin);
 
-		printf("                _                   \n");
-		printf("               | |                  \n");
-		printf(" ____   ____ __| |____   ___  ____  \n");
-		printf("|  _ \\ / ___) _  |    \\ / _ \\|  _ \\ \n");
-		printf("| |_| ( (__( (_| | | | | |_| | | | |\n");
-		printf("|  __/ \\____)____|_|_|_|\\___/|_| |_|\n");
-		printf("|_|                                 \n\n");
-
-		printf("Counter:      %s           \n", counterPath);
-		printf("Interval:     %d ms        \n", pollingInterval);
-		printf("Peak:         %ld          \n", maxCounterData);
-		printf("Current:      %ld          \n", currentCounterData);
+		if (terminalRows > 11) {
+			printf("                _                   \n");
+			printf("               | |                  \n");
+			printf(" ____   ____ __| |____   ___  ____  \n");
+			printf("|  _ \\ / ___) _  |    \\ / _ \\|  _ \\ \n");
+			printf("| |_| ( (__( (_| | | | | |_| | | | |\n");
+			printf("|  __/ \\____)____|_|_|_|\\___/|_| |_|\n");
+			printf("|_|                                 \n\n");
+		}
+		if (terminalRows > 3) {
+			printf("Counter:      %s           \n", counterPath);
+			printf("Interval:     %d ms        \n", pollingInterval);
+			printf("Peak:         %ld          \n", maxCounterData);
+			printf("Current:      %ld            ", currentCounterData);
+		}
 	}
 }
 
@@ -227,7 +250,6 @@ int setup(void) {
 	);
 	hideCursor();
 
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	GetConsoleScreenBufferInfo(hStdOut, &csbi);
 	terminalColumns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 	terminalRows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
