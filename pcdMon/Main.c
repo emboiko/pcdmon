@@ -345,6 +345,28 @@ void update(void) {
 
 	///////////////////////////////////////////////////////////////
 
+	// Scaling up
+	for (int i = 0; i < windowWidth; i++) {
+		if ((blits[i] * blitScaleFactor) > windowHeight) {
+			blitScaleFactor *= 0.75;
+			break;
+		}
+	}
+
+	// Scaling down
+	float blitThreshold = windowHeight * 0.9;
+	int blitThresholdMet = FALSE;
+	for (int i = 0; i < windowWidth; i++) {
+		if ((blits[i] * blitScaleFactor) > blitThreshold) {
+			blitThresholdMet = TRUE;
+			break;
+		}
+	}
+	if (!blitThresholdMet && blitScaleFactor <= 1) {
+		blitScaleFactor *= 1.25;
+	}
+
+	// Blit towards the current counter data
 	double difference;
 	if (blit > currentCounterData) {
 		difference = blit - currentCounterData;
@@ -357,22 +379,12 @@ void update(void) {
 		shiftBlitBuffer(blit);
 	}
 
-	float blitThreshold = windowHeight * 0.9f;
+	// Get the current max blit to scale the blit's shade in draw()
+	long max = 0;
 	for (int i = 0; i < windowWidth; i++) {
-		if ((blits[i] * blitScaleFactor) > windowHeight) {
-			blitScaleFactor *= 0.75f;
-		}
-		else if (
-			((blits[i] * blitScaleFactor) > blitThreshold)
-			&&
-			(blitScaleFactor <= 1)
-			) {
-			blitScaleFactor *= 1.25f;
-		}
-
-		if (blits[i] > maxBlit) maxBlit = blits[i];
+		if (blits[i] > max) max = blits[i];
 	}
-
+	maxBlit = max;
 }
 
 
