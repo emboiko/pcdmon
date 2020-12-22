@@ -16,6 +16,8 @@ int lastFrameTime = 0;
 int windowWidth = 1000;
 int windowHeight = 1000;
 int pollingInterval = 1000;
+int terminalColumns = 0;
+int terminalRows = 0;
 float xProjectionOffset = 0.5;
 float yProjectionOffset = 0.75;
 float blitScaleFactor = 1.0f;
@@ -25,14 +27,12 @@ long currentCounterData = 0;
 long maxCounterData = 0;
 long* blits = NULL;
 char* counterPath = NULL;
-int terminalColumns = 0;
-int terminalRows = 0;
 HANDLE hStdOut = NULL;
 HQUERY hQuery = NULL;
 HCOUNTER hCounter = NULL;
 PDH_FMT_COUNTERVALUE pValue;
-COORD origin = {.X=0, .Y=0};
 CONSOLE_SCREEN_BUFFER_INFO csbi;
+COORD origin = {.X=0, .Y=0};
 
 
 void hideCursor() {
@@ -105,7 +105,7 @@ long pollPerfCounter(void) {
 }
 
 
-void poll(void) {
+void pollAndPrint(void) {
 	while (running) { 
 		currentCounterData = pollPerfCounter(); 
 		if (currentCounterData > maxCounterData) maxCounterData = currentCounterData;
@@ -159,12 +159,12 @@ void closeCounter(void) {
 
 int createPollThread(void) {
 	HANDLE hThread = CreateThread(
-		NULL,	// default security descriptor
-		0,		// default stack size
-		poll,	// entry point
-		NULL,	// application defined lparam passed to the thread
-		0,		// run immediately
-		NULL	// receieve no thread ID
+		NULL,			// default security descriptor
+		0,				// default stack size
+		pollAndPrint,	// entry point
+		NULL,			// application defined lparam passed to the thread
+		0,				// run immediately
+		NULL			// receieve no thread ID
 	);
 	if (hThread == NULL) return FALSE;
 	return TRUE;
@@ -242,11 +242,11 @@ int setup(void) {
 	if (blits == NULL) return FALSE;
 
 	hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	DWORD prev_mode;
-	GetConsoleMode(hStdOut, &prev_mode);
+	DWORD previousMode;
+	GetConsoleMode(hStdOut, &previousMode);
 	SetConsoleMode(
 		hStdOut, 
-		ENABLE_EXTENDED_FLAGS | (prev_mode &= ~ENABLE_QUICK_EDIT_MODE)
+		ENABLE_EXTENDED_FLAGS | (previousMode &= ~ENABLE_QUICK_EDIT_MODE)
 	);
 	hideCursor();
 
@@ -311,8 +311,8 @@ void processInput(void) {
 		}
 
 		if (event.key.keysym.sym == SDLK_UP) {
-if (pollingInterval > 10000) break;
-pollingInterval += 100;
+			if (pollingInterval > 10000) break;
+			pollingInterval += 100;
 		}
 
 		if (event.key.keysym.sym == SDLK_DOWN) {
@@ -426,7 +426,7 @@ void draw(void) {
 	long shade;
 
 	 // Draw all shadows first so they're overlapped by the bulk shading
-	for (int i = 0; i < windowWidth - 1; i++) {
+	for (int i = 0; i < windowWidth; i++) {
 		//Trace the shadow
 		shade = scaleBetween(blits[i], 25, 200, 0, maxBlit);
 		SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
@@ -439,9 +439,9 @@ void draw(void) {
 		);
 	}
 
-	for (int i = 0; i < windowWidth-1; i++) {
+	for (int i = 0; i < windowWidth; i++) {
 		// Shade in the bulk
-		shade = scaleBetween(blits[i], 0, 200, 0, maxBlit);
+		shade = scaleBetween(blits[i], 0, 255, 0, maxBlit);
 		SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
 		SDL_RenderDrawLine(
 			renderer,
