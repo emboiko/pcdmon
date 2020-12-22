@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <signal.h>
 
 #define FPS 60
 #define TARGET_FRAMETIME (1000 / FPS)
@@ -161,6 +162,19 @@ long scaleBetween(long num, long minScale, long maxScale, long min, long max) {
 }
 
 
+void exitHandler(sig) {
+	running = FALSE;
+}
+
+
+void destroyWindow(void) {
+	if (blits != NULL) free(blits);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+}
+
+
 int initWindow(void) {
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		fprintf(stderr, "Error initializing SDL.\n");
@@ -226,15 +240,10 @@ int setup(void) {
 		printf("\n");
 	}
 
+	signal(SIGINT, exitHandler);
+	signal(SIGBREAK, exitHandler);
+
 	return TRUE;
-}
-
-
-void destroyWindow(void) {
-	if (blits != NULL) free(blits);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
 }
 
 
