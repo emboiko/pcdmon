@@ -8,6 +8,8 @@ Render a visualization for an individual Windows performance counter.
 
 **Usage:**
 
+Make sure you've got the [VC++ Runtime](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads) installed.
+
 `pcdmon {Counter Path} [Polling Interval]`
 
 where `{Counter Path}` is a valid Windows [Counter Path](https://docs.microsoft.com/en-us/windows/win32/perfctrs/specifying-a-counter-path)
