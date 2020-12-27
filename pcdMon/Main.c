@@ -53,7 +53,13 @@ void sFillRow(char* str, int offset) {
 
 
 void nFillRow(long num, int offset) {
-	int len = floor(log10(abs(num))) + 1;
+	int len;
+	if (num != 0) {
+		len = floor(log10(abs(num))) + 1;
+	}
+	else {
+		len = 1;
+	}
 
 	if (terminalColumns - len - offset >= 0) {
 		for (int i = 0; i < terminalColumns - len - offset; i++) {
