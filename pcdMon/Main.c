@@ -35,6 +35,35 @@ CONSOLE_SCREEN_BUFFER_INFO csbi;
 COORD origin = {.X=0, .Y=0};
 
 
+void sFillRow(char* str, int offset) {
+	int len = 0;
+	while (*str != '\0') {
+		str++;
+		len++;
+	}
+
+	if (terminalColumns - len - offset >= 0) {
+		for (int i = 0; i < terminalColumns - len - offset;i++) {
+			printf(" ");
+		}
+	}
+	printf("\n");
+
+}
+
+
+void nFillRow(long num, int offset) {
+	int len = floor(log10(abs(num))) + 1;
+
+	if (terminalColumns - len - offset >= 0) {
+		for (int i = 0; i < terminalColumns - len - offset; i++) {
+			printf(" ");
+		}
+	}
+	printf("\n");
+}
+
+
 void hideCursor() {
 	CONSOLE_CURSOR_INFO info = {.dwSize=100, .bVisible=FALSE};
 	SetConsoleCursorInfo(hStdOut, &info);
@@ -130,7 +159,7 @@ void pollAndPrint(void) {
 		terminalRows = currentTerminalRows;
 		SetConsoleCursorPosition(hStdOut, origin);
 
-		if (terminalRows > 11) {
+		if (terminalRows > 11 && terminalColumns > 35) {
 			printf("                _                   \n");
 			printf("               | |                  \n");
 			printf(" ____   ____ __| |____   ___  ____  \n");
@@ -140,10 +169,14 @@ void pollAndPrint(void) {
 			printf("|_|                                 \n\n");
 		}
 		if (terminalRows > 3) {
-			printf("Counter:      %s           \n", counterPath);
-			printf("Interval:     %d ms        \n", pollingInterval);
-			printf("Peak:         %ld          \n", maxCounterData);
-			printf("Current:      %ld            ", currentCounterData);
+			printf("Counter:      %s", counterPath);
+			sFillRow(counterPath, 14);
+			printf("Interval:     %d ms", pollingInterval);
+			nFillRow((long)pollingInterval, 17);
+			printf("Peak:         %ld", maxCounterData);
+			nFillRow(maxCounterData, 14);
+			printf("Current:      %ld", currentCounterData);
+			nFillRow(currentCounterData, 14);
 		}
 	}
 }
