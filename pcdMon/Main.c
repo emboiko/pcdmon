@@ -163,7 +163,6 @@ void pollAndPrint(void) {
 		}
 		terminalColumns = currentTerminalColumns;
 		terminalRows = currentTerminalRows;
-		SetConsoleCursorPosition(hStdOut, origin);
 
 		if (terminalRows > 11 && terminalColumns > 35) {
 			printf("                _                   \n");
@@ -183,7 +182,10 @@ void pollAndPrint(void) {
 			nFillRow(maxCounterData, 14);
 			printf("Current:      %ld", currentCounterData);
 			nFillRow(currentCounterData, 14);
+			nFillRow(0, 0);
 		}
+		
+		SetConsoleCursorPosition(hStdOut, origin);
 	}
 }
 
